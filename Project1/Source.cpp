@@ -1,132 +1,134 @@
 #include <iostream>
 #include <vector>
-#include <algorithm>
-#include <set>
-#include <string>
-#include <sstream>
+#include <random>
+#include <time.h>
+#include <fstream>
 
 using namespace std;
 
-void Problem_1()
+#define MAX_CLUSTER_VALUE 100
+
+vector<vector<vector<double>>> data_distribution(vector<vector<double>> array, vector<vector<double>> cluster, size_t k)
 {
-	int n;
-	cout << "Enter size matrix NxN: "; cin >> n;
+	size_t n = array.size();
+	size_t dim = array.at(0).size();
 
-	int** A = new int* [n];
-	for (int i(0); i < n; i++)
-		A[i] = new int[n];
+	vector<vector<vector<double>>> cluster_content(k);
 
 	for (int i(0); i < n; i++)
-		for (int j(0); j < n; j++)
-			cin >> A[i][j];
+	{
+		double min_distance = pow(2, 32) - 1;
+		size_t situable_cluster = -1;
 
-	for (int i(0), l(n - 1); i < n; i++, l--)
-		for (int j(0), m(n - 1); j < n; j++, m--)
+		for (int j(0); j < k; j++)
 		{
-			if (A[i][j] != A[m][l])
+			double distance = 0;
+			for (int q(0); q < dim; q++)
+				distance += pow(array[i][q] - cluster[j][q], 2);
+
+			distance = pow(distance, 0.5);
+
+			if (distance < min_distance)
 			{
-				cout << "Matrix not symmetrical!" << endl;
-				cin.get();
-				return;
+				min_distance = distance;
+				situable_cluster = j;
 			}
-
-			if (i + j == n - 1)
-				continue;
 		}
 
-	cout << "Matrix symmetrical!" << endl;
+		cluster_content[situable_cluster].push_back(array[i]);
+	}
+
+	return cluster_content;
 }
 
-void Problem_2()
+vector<vector<double>> cluster_update(vector<vector<double>> cluster, vector<vector<vector<double>>> cluster_content, size_t dim)
 {
-	int n; 
-	cout << "Enter size matrix NxN: "; cin >> n;
+	size_t k = cluster.size();
 
-	int** Matrix = new int* [n];
-	vector<int> check_row, check_column;
-
-	cout << "Enter matrix:" << endl;
-	for (int i(0); i < n; i++)
+	for (int i(0); i < k; i++)
 	{
-		Matrix[i] = new int[n];
-		for (int j(0); j < n; j++)
-			cin >> Matrix[i][j];
-	}
-
-	for (int i(0); i < n; i++)
-	{
-		for (int i(1); i <= n; i++)
+		for (int q(0); q < dim; q++)
 		{
-			check_row.push_back(i);
-			check_column.push_back(i);
-		}
+			double updated_parameter = 0;
+			for (int j(0); j < cluster_content[i].size(); j++)
+				updated_parameter += cluster_content[i][j][q];
 
-		for (int j(0); j < n; j++)
-		{
-			check_row.erase(remove(check_row.begin(), check_row.end(), Matrix[i][j]), check_row.end());
-			check_column.erase(remove(check_column.begin(), check_column.end(), Matrix[j][i]), check_column.end());
-		}
+			if (cluster_content[i].size() != 0)
+				updated_parameter /= cluster_content[i].size();
 
-		if (check_column.size() != 0 || check_row.size() != 0)
-		{
-			cout << "Matrix not a latin square!\n";
-			return;
+			cluster[i][q] = updated_parameter;
 		}
 	}
-
-	cout << "Matrix a latin square!" << endl;
+	return cluster;
 }
 
-void Problem_3()
+void clusterization(vector<vector<double>> array, size_t k)
 {
-	string pos;
-	cout << "Enter position: ";
-	getline(cin, pos);
+	size_t n = array.size();
+	size_t dim = array.at(0).size();
 
-	int i_1 = 56 - int(pos[1]);
-	int i_2 = int(pos[0]) - 97;
+	vector<vector<double>> cluster(k, vector<double>(dim));
+	vector<vector<vector<double>>> cluster_content(k);
 
-	char A[8][8] = { { '.', '.', '.', '.', '.', '.', '.', '.', },  { '.', '.', '.', '.', '.', '.', '.', '.', }, { '.', '.', '.', '.', '.', '.', '.', '.', }, { '.', '.', '.', '.', '.', '.', '.', '.', },
-	{ '.', '.', '.', '.', '.', '.', '.', '.', } , { '.', '.', '.', '.', '.', '.', '.', '.', } , { '.', '.', '.', '.', '.', '.', '.', '.', }, { '.', '.', '.', '.', '.', '.', '.', '.', } };
+	srand(unsigned int(time(nullptr)));
 
-	A[i_1][i_2] = 'Q';
+	for (int i(0); i < dim; i++)
+		for (int j(0); j < k; j++)
+			cluster[j][i] = rand() % MAX_CLUSTER_VALUE;
 
-	for (int j(1); j < 8; j++)
+	cluster_content = data_distribution(array, cluster, k);
+
+	vector<vector<double>> previous_cluster(k, vector<double>(dim));
+	std::copy(cluster.begin(), cluster.end(), previous_cluster.begin());
+
+	while (true)
 	{
-		if(i_1 + j < 8)
-			A[i_1 + j][i_2] = '*';
-		if(i_1 - j >= 0)
-			A[i_1 - j][i_2] = '*';
-		if (i_2 + j < 8)
-			A[i_1][i_2 + j] = '*';
-		if (i_2 - j >= 0)
-			A[i_1][i_2 - j] = '*';
+		cluster = cluster_update(cluster, cluster_content, dim);
+		cluster_content = data_distribution(array, cluster, k);
 
-		if (i_1 - j >= 0 && i_2 - j >= 0)
-			A[i_1 - j][i_2 - j] = '*';
-		if (i_1 + j < 8 && i_2 + j < 8)
-			A[i_1 + j][i_2 + j] = '*';
+		if (std::equal(cluster.begin(), cluster.end(), previous_cluster.begin()))
+			break;
 
-		if (i_1 + j < 8 && i_2 - j >= 0)
-			A[i_1 + j][i_2 - j] = '*';
-		if (i_1 - j >= 0 && i_2 + j < 8)
-			A[i_1 - j][i_2 + j] = '*';
+		std::copy(cluster.begin(), cluster.end(), previous_cluster.begin());
 	}
 
-	for (int i(0); i < 8; i++)
+	cout << "\n\nClusterization:\n";
+	for (int i(0); i < k; i++)
 	{
-		for (int j(0); j < 8; j++)
-			cout << A[i][j] << " ";
-		cout << endl;
+		cout << i + 1 << " cluster:\n";
+		for (auto iter : cluster_content[i])
+		{
+			for (auto elements : iter)
+				cout << elements << " ";
+			cout << endl;
+		}
+		cout << '\n';
 	}
-
-
 }
 
 int main()
 {
-	Problem_3();
-	
+	vector<vector<double>> array(20, vector<double>(5));
+
+	fstream data;
+	data.open("data.txt");
+
+	for (int i(0); i < 20; i++)
+		for (int j(0); j < 5; j++)
+			data >> array[i][j];
+
+	for (int i(0); i < 20; i++)
+	{
+		for (int j(0); j < 5; j++)
+			cout << array[i][j] << " ";
+		cout << endl;
+	}
+
+	size_t k;
+	cout << "count cluster's: "; cin >> k;
+
+	clusterization(array, k);
+
 	system("pause");
 	return 1;
 }
