@@ -6,7 +6,7 @@
 
 using namespace std;
 
-#define MAX_CLUSTER_VALUE 100
+#define MAX_CLUSTER_VALUE 50
 
 vector<vector<vector<double>>> data_distribution(vector<vector<double>> array, vector<vector<double>> cluster, size_t k)
 {
